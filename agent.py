@@ -7,14 +7,19 @@ import torch
 from torch import nn
 from collections import namedtuple
 
-#TODO add an evaluate function to run trained agents, incomplete right now.
-
 
 Transition=namedtuple('Transition','state action reward next_state')
 
 class Policy:
 
     def __init__(self,eps_start,eps_end,eps_decay,env):
+        """
+        The policy class.
+        param eps_start: initial value of the decaying epsilon parameter of epsilon-greedy policy
+        param eps_end: asymptotic lower bound value of the decaying epsilon parameter of epsilon-greedy policy 
+        param eps_decay: controls decay rate for epsilon parameter of epsilon-greedy policy
+        param env: environment
+        """
         self.eps_start=eps_start
         self.eps_end=eps_end
         self.eps=eps_start
@@ -27,7 +32,6 @@ class Policy:
             return torch.tensor([[random.randrange(self.env.num_actions)]], dtype=torch.long)
         else:
             with torch.no_grad():
-                # print(state)
                 action=policy_net(state).max(1)[1].view(1, 1)
             return action
     
@@ -37,12 +41,22 @@ class Policy:
         return action
     
     def epsilon_update(self):
+        # call after every step to decay epsilon
         self.steps+=1
         self.eps=self.eps_end+(self.eps_end-self.eps_start)*math.exp(-1*self.steps/self.eps_decay)
 
 class Agent:
 
     def __init__(self,env,batch_size,buffer_length,LR,gamma,target_reset):
+        """
+        The agent class.
+        param env: environment
+        param batch_size: batch size used for training
+        param buffer_length: maximum length of replay buffer
+        param LR: learning rate for the state-action value update
+        param gamma: discount factor of the pendulum MDP
+        param target_reset: number of steps after which target Q-network is updated
+        """
         self.env=env
         self.LR=LR
         self.batch_size=batch_size
@@ -50,21 +64,16 @@ class Agent:
         self.gamma=gamma
         self.target_reset=target_reset
 
-    def build_net(self,trained_params=None,path=None):
-        if trained_params==None:
-            self.policy_net=deepQnet(len(self.env.s),self.env.num_actions)
-            self.target_net=deepQnet(len(self.env.s),self.env.num_actions)
-            self.target_net.load_state_dict(self.policy_net.state_dict())
-            self.optimizer = torch.optim.AdamW(self.policy_net.parameters(), lr=self.LR,amsgrad=True)
-        else:
-            self.policy_net=deepQnet(len(self.env.s),self.env.num_actions)
-            self.target_net.load_state_dict(torch.load(path))
+    def build_net(self):
+        self.policy_net=deepQnet(len(self.env.s),self.env.num_actions)
+        self.target_net=deepQnet(len(self.env.s),self.env.num_actions)
+        self.target_net.load_state_dict(self.policy_net.state_dict())
+        self.optimizer = torch.optim.AdamW(self.policy_net.parameters(), lr=self.LR,amsgrad=True)
 
     def init_policy(self,eps_start,eps_end,eps_decay,env):
         self.policy=Policy(eps_start,eps_end,eps_decay,env)
 
     def envStep(self,state):
-        # print(state)
         state_tensor=torch.tensor(state,dtype=torch.float32).unsqueeze(0)
         action=self.policy.epsilon_greedy(state_tensor,self.policy_net)
         self.policy.epsilon_update() 
@@ -80,12 +89,10 @@ class Agent:
         targets_batch=torch.zeros(self.batch_size)
         targets_batch+=torch.tensor(transition_batch.reward)
         terminal_state_mask=list(map(lambda s: s is not None, next_states_batch))
-        # print(next_states_batch)
         next_states_batch=torch.tensor(np.array([ns for ns in transition_batch.next_state if ns is not None]),dtype=torch.float32)
         with torch.no_grad():
             targets_batch[terminal_state_mask]+=self.gamma*torch.max(self.target_net(next_states_batch),1)[0]
         actions_batch=torch.tensor(transition_batch.action)
-        #print(transition_batch.state)
         states_batch=torch.tensor(np.array([s for s in transition_batch.state]),dtype=torch.float32)
         state_action_batch=torch.gather(self.policy_net(states_batch),1,actions_batch.unsqueeze(1)).squeeze(1)
 
@@ -100,7 +107,6 @@ class Agent:
         for episode in range(n_episodes):
             observation = self.env.reset()
             while True:
-                # print(observation)
                 next_observation, done=self.envStep(observation)
                 if len(self.memory)<self.batch_size:
                     if done:

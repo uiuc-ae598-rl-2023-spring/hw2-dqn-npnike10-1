@@ -14,7 +14,6 @@ def main():
     eps_end=0.05
     eps_decay=1000
     n_episodes=600
-#    path='Users/niket/DQN/trained_net.pt'             #to save trained model params
 
     env = discreteaction_pendulum.Pendulum()
 
@@ -22,8 +21,7 @@ def main():
     DQN_agent.build_net()
     DQN_agent.init_policy(eps_start,eps_end,eps_decay,env)
     DQN_agent.train(n_episodes)
-    # torch.save(DQN_agent.policy_net.state_dict(), path)
-    print('Complete')
+    print('Training complete')
 
     policy=lambda s: DQN_agent.policy.greedy(torch.tensor(s,dtype=torch.float32).unsqueeze(0),DQN_agent.policy_net)
 
