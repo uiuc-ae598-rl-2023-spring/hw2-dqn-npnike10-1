@@ -146,8 +146,34 @@ def plot_trajectory(policy,env):
         plt.savefig('figures/trained_agent_trajectory_example.png')
         plt.show()
 
-def plot_avg_reward(data):  
-    plt.plot(data['avg_eps_rewards'][-1])
+def plot_ablation_avg_reward(yyd,ynd,nyd,nnd,n_episodes=n_episodes): 
+    yy_mean=get_mean(yyd,'avg_eps_rewards')
+    yy_stdev=get_stdev(yyd,'avg_eps_rewards')
+
+    yn_mean=get_mean(ynd,'avg_eps_rewards')
+    yn_stdev=get_stdev(ynd,'avg_eps_rewards')
+
+    ny_mean=get_mean(nyd,'avg_eps_rewards')
+    ny_stdev=get_stdev(nyd,'avg_eps_rewards')
+
+    nn_mean=get_mean(nnd,'avg_eps_rewards')
+    nn_stdev=get_stdev(nnd,'avg_eps_rewards')
+
+    ms=[(yy_mean,yy_stdev,'Standard DQN'),(yn_mean,yn_stdev,'With target without replay'),(ny_mean,ny_stdev,'Without target with replay'),(nn_mean,nn_stdev,'Without target without replay')]
+
+    plt.figure()
+    clrs = sns.color_palette("husl", 4)
+    with sns.axes_style("darkgrid"):
+        eps = list(range(n_episodes))
+        for i,pair in enumerate(ms):
+            plt.plot(eps, pair[0], c=clrs[i],label=pair[2])
+            plt.fill_between(eps, pair[0]-pair[1], pair[0]+pair[1] ,alpha=0.3, facecolor=clrs[i])
+        plt.ylim(0,2)
+        plt.ylabel('Average Reward for the Episode')
+        plt.xlabel('Episode Number')
+        plt.legend()
+        plt.savefig('figures/ablation_avg_reward.png')
+        plt.show()
 
 def get_mean(dict,key):
     return np.array([mean(value) for value in list(zip(*dict[key]))])

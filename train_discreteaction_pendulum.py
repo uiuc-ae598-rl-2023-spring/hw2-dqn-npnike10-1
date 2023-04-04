@@ -11,7 +11,7 @@ def main():
     train_flag=0
     plot_flag=0
     gif_flag=0
-    ablation_flag=1
+    ablation_flag=0
     plot_ablation_flag=1
 
     n_runs=10
@@ -68,6 +68,7 @@ def main():
 
     if plot_ablation_flag==1:
         plot_ablation_mean_return(yy_data,yn_data,ny_data,nn_data)
+        plot_ablation_avg_reward(yy_data,yn_data,ny_data,nn_data)
 
 
 
