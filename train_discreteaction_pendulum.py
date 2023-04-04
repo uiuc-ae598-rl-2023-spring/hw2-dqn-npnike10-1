@@ -1,34 +1,75 @@
 from agent import Agent
 import discreteaction_pendulum
 import torch
-
-#TODO add plots and code for averging over multiple training runs
+import matplotlib.pyplot as plt
+import pickle
+from tqdm import tqdm
+from utils import *
 
 def main():
-    batch_size=32
-    buffer_length=10000
-    LR=1e-3
-    gamma=0.95
-    target_update=500
-    eps_start=0.9
-    eps_end=0.05
-    eps_decay=1000
-    n_episodes=600
+
+    train_flag=0
+    plot_flag=1
+    gif_flag=0
+    ablation_flag=0
+    plot_ablation_flag=0
+
+    n_runs=2
 
     env = discreteaction_pendulum.Pendulum()
 
-    DQN_agent=Agent(env,batch_size,buffer_length,LR,gamma,target_update)
-    DQN_agent.build_net()
-    DQN_agent.init_policy(eps_start,eps_end,eps_decay,env)
-    DQN_agent.train(n_episodes)
-    print('Training complete')
+    if train_flag==1:
+        avg_data,trained_policy,trained_net=many_train_runs(env,n_runs)
+        with open('yy_saved_avg_dictionary.pkl', 'wb') as f:
+            pickle.dump((avg_data, trained_policy,trained_net),f)
+    else:
+        with open('yy_saved_avg_dictionary.pkl', 'rb') as f:
+            avg_data,trained_policy,trained_net=pickle.load(f)
 
-    policy=lambda s: DQN_agent.policy.greedy(torch.tensor(s,dtype=torch.float32).unsqueeze(0),DQN_agent.policy_net)
+    policy=lambda s: trained_policy.greedy(torch.tensor(s,dtype=torch.float32).unsqueeze(0),trained_net)
+    state_value=lambda s: torch.max(trained_net(torch.tensor(s,dtype=torch.float32).unsqueeze(0)),1)[0].item()
 
-    env.video(policy, filename='figures/my_discreteaction_pendulum.gif')
+    if plot_flag==1:
+        plot_policy(policy,env)
+        plot_mean_return(avg_data,n_episodes)
+        plot_state_value(state_value)
+        plot_trajectory(policy,env)
+
+    if gif_flag==1:
+        env.video(policy, filename='figures/trained_discreteaction_pendulum.gif')
+    
+    if ablation_flag==1:      # naming convention - y/n+y/n = targetQ yes/no + replay yes/no
+        with open('yy_saved_avg_dictionary.pkl', 'rb') as f:
+            yy_data,yy_trained_policy,yy_trained_net=pickle.load(f)  
+
+        yn_data,yn_trained_policy,yn_trained_net=many_train_runs(env,n_runs,buffer_length=batch_size)
+        with open('yn_saved_avg_dictionary.pkl', 'wb') as f:
+            pickle.dump((yn_data,yn_trained_policy,yn_trained_net),f)
+
+        ny_data,ny_trained_policy,ny_trained_net=many_train_runs(env,n_runs,target_update=1)
+        with open('ny_saved_avg_dictionary.pkl', 'wb') as f:
+            pickle.dump((ny_data,ny_trained_policy,ny_trained_net),f)
+        
+        nn_data,nn_trained_policy,nn_trained_net=many_train_runs(env,n_runs,target_update=1,buffer_length=batch_size)
+        with open('nn_saved_avg_dictionary.pkl', 'wb') as f:
+            pickle.dump((nn_data,nn_trained_policy,nn_trained_net),f)
+    else:
+        with open('yy_saved_avg_dictionary.pkl', 'rb') as f:
+            yy_data,yy_trained_policy,yy_trained_net=pickle.load(f)  
+        
+        with open('yn_saved_avg_dictionary.pkl', 'rb') as f:
+            yn_data,yn_trained_policy,yn_trained_net=pickle.load(f)
+
+        with open('ny_saved_avg_dictionary.pkl', 'rb') as f:
+            ny_data,ny_trained_policy,ny_trained_net=pickle.load(f)
+        
+        with open('nn_saved_avg_dictionary.pkl', 'rb') as f:
+            nn_data,nn_trained_policy,nn_trained_net=pickle.load(f)
+
+    if plot_ablation_flag==1:
+        plot_ablation_mean_return(yy_data,yn_data,ny_data,nn_data)
+
+
 
 if __name__ == '__main__':
     main()
-
-
-

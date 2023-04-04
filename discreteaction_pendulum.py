@@ -1,4 +1,6 @@
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning) 
 import scipy.integrate
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
