@@ -13,7 +13,7 @@ target_update=500
 eps_start=0.9
 eps_end=0.05
 eps_decay=1000
-n_episodes=600
+n_episodes=450
 
 def plot_ablation_mean_return(yyd,ynd,nyd,nnd,n_episodes=n_episodes):
     yy_mean=get_mean(yyd,'returns')
@@ -28,17 +28,20 @@ def plot_ablation_mean_return(yyd,ynd,nyd,nnd,n_episodes=n_episodes):
     nn_mean=get_mean(nnd,'returns')
     nn_stdev=get_stdev(nnd,'returns')
 
-    ms=[(yy_mean,yy_stdev),(yn_mean,yn_stdev),(ny_mean,ny_stdev),(nn_mean,nn_stdev)]
+    ms=[(yy_mean,yy_stdev,'Standard DQN'),(yn_mean,yn_stdev,'With target without replay'),(ny_mean,ny_stdev,'Without target with replay'),(nn_mean,nn_stdev,'Without target without replay')]
 
     plt.figure()
-    clrs = sns.color_palette("husl", 1)
+    clrs = sns.color_palette("husl", 4)
     with sns.axes_style("darkgrid"):
         eps = list(range(n_episodes))
-        for pair in ms:
-            plt.plot(eps, pair[0], c=clrs[0])
-            plt.fill_between(eps, pair[0]-pair[1], pair[0]+pair[1] ,alpha=0.3, facecolor=clrs[0])
+        for i,pair in enumerate(ms):
+            plt.plot(eps, pair[0], c=clrs[i],label=pair[2])
+            plt.fill_between(eps, pair[0]-pair[1], pair[0]+pair[1] ,alpha=0.3, facecolor=clrs[i])
         plt.ylim(0,25)
-        plt.legend(('Standard DQN','With target net without replay', 'Without target net with replay','Without target net without replay'))
+        plt.ylabel('Return')
+        plt.xlabel('Number of Episodes')
+        plt.legend()
+        plt.savefig('figures/ablation_mean_return.png')
         plt.show()
 
 
@@ -65,7 +68,9 @@ def plot_policy(policy,env):
             tau[i,j]=env._a_to_u(policy((X[i,j],Y[i,j])))
     plt.imshow(tau, extent=[-np.pi, np.pi, -15, 15], origin='lower',
            cmap='viridis',aspect='auto')
-    plt.colorbar()
+    plt.xlabel(r'$\theta$')
+    plt.ylabel(r'$\dot\theta$')
+    plt.colorbar(label=r'$\tau$')
     plt.savefig('figures/trained_policy_example.png')
     plt.show()
 
@@ -79,7 +84,9 @@ def plot_state_value(state_value):
             value[i,j]=state_value((X[i,j],Y[i,j]))
     plt.imshow(value, extent=[-np.pi, np.pi, -15, 15], origin='lower',
            cmap='viridis',aspect='auto')
-    plt.colorbar()
+    plt.xlabel(r'$\theta$')
+    plt.ylabel(r'$\dot\theta$')
+    plt.colorbar(label='State Value')
     plt.savefig('figures/trained_state_value_example.png')
     plt.show()
 
@@ -93,6 +100,7 @@ def plot_mean_return(data,n_episodes):
         plt.plot(eps, mean, c=clrs[0],label="Mean return")
         plt.fill_between(eps, mean-stdev, mean+stdev ,alpha=0.3, facecolor=clrs[0], label=r'$1-\sigma$ deviation')
         plt.ylim(0,25)
+        plt.legend()
         plt.ylabel('Return')
         plt.xlabel('Number of Episodes')
     plt.savefig('figures/mean_return.png')
@@ -124,18 +132,19 @@ def plot_trajectory(policy,env):
     thetadot = data['s'][:, 1]
     tau = [env._a_to_u(a) for a in data['a']]
 
-    fig, ax = plt.subplots(3, 1, figsize=(10, 10))
-    ax[0].plot(data['t'], theta, label='theta')
-    ax[0].plot(data['t'], thetadot, label='thetadot')
-    ax[0].legend()
-    ax[1].plot(data['t'][:-1], tau, label='tau')
-    ax[1].legend()
-    ax[2].plot(data['t'][:-1], data['r'], label='r')
-    ax[2].legend()
-    ax[2].set_xlabel('time step')
-    plt.tight_layout()
-    plt.savefig('figures/trained_agent_trajectory_example.png')
-    plt.show()
+    with sns.axes_style("darkgrid"):
+        fig, ax = plt.subplots(3, 1, figsize=(10, 10))
+        ax[0].plot(data['t'], theta, label='theta')
+        ax[0].plot(data['t'], thetadot, label='thetadot')
+        ax[0].legend()
+        ax[1].plot(data['t'][:-1], tau, label='tau')
+        ax[1].legend()
+        ax[2].plot(data['t'][:-1], data['r'], label='r')
+        ax[2].legend()
+        ax[2].set_xlabel('time step')
+        plt.tight_layout()
+        plt.savefig('figures/trained_agent_trajectory_example.png')
+        plt.show()
 
 def plot_avg_reward(data):  
     plt.plot(data['avg_eps_rewards'][-1])
